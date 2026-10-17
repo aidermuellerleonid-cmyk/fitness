@@ -29,7 +29,7 @@ const save=()=>{try{localStorage.setItem('ziele',JSON.stringify(data))}catch(e){
 const key=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 let now=new Date();const todayK=()=>{const d=new Date();return key(d.getFullYear(),d.getMonth(),d.getDate())};let lastDay=todayK();let Y=now.getFullYear(),M=now.getMonth(),sel=key(Y,M,now.getDate());
 const $=id=>document.getElementById(id);
-const count=e=>{const c={G:0,Y:0,R:0};if(e)Object.values(e).forEach(v=>c[v]++);return c};
+const count=e=>{const c={G:0,R:0};if(e)Object.values(e).forEach(v=>{if(v==='G'||v==='R')c[v]++});return c};
 const bal=e=>{const c=count(e);c.n=0;return c};
 function render(){
  now=new Date();
@@ -50,11 +50,11 @@ function render(){
   if(d[b.dataset.a]==b.dataset.f)delete d[b.dataset.a];else d[b.dataset.a]=b.dataset.f;save();render()});
  if($('clr'))$('clr').onclick=()=>{delete data[sel];save();render()};
  // Monat
- const t={G:0,Y:0,R:0},per={};AREAS.forEach(a=>per[a.k]={G:0,n:0});let days=0,perfect=0;
+ const t={G:0,R:0},per={};AREAS.forEach(a=>per[a.k]={G:0,n:0});let days=0,perfect=0;
  for(let d=1;d<=dim;d++){const x=data[key(Y,M,d)];if(!x||!Object.keys(x).length)continue;days++;
-  const cc=count(x),bb=bal(x);t.G+=bb.G;t.Y+=bb.Y;t.R+=bb.R;if(cc.G==5)perfect++;
+  const cc=count(x),bb=bal(x);t.G+=bb.G;t.R+=bb.R;if(cc.G==5)perfect++;
   AREAS.forEach(a=>{if(x[a.k]){per[a.k].n++;if(x[a.k]=='G')per[a.k].G++}})}
- const tot=t.G+t.Y+t.R,pct=tot?Math.round((t.G+t.Y*.5)/tot*100):0;
+ const tot=t.G+t.R,pct=tot?Math.round(t.G/tot*100):0;
  let streak=0;{let dt=new Date(now.getFullYear(),now.getMonth(),now.getDate()),first=true;
   for(;;){const x=data[key(dt.getFullYear(),dt.getMonth(),dt.getDate())];
    if(x&&Object.keys(x).length==5&&bal(x).R==0){streak++}else if(!first)break;
@@ -62,8 +62,8 @@ function render(){
  const msg=!tot?'Noch keine Einträge – starte heute! 💪':pct>=80?'Starker Monat – weiter so! 🔥':pct>=50?'Solide, da geht noch mehr! 👍':'Jeder Tag ist ein neuer Anfang. 💙';
  $('monc').innerHTML=`<h2>Monatsüberblick</h2><div class="mut">${days} Tage erfasst · ${perfect} perfekte Tage · Serie: ${streak} 🔥</div>
  <div class="row"><b style="font-size:28px">${pct}%</b><span class="mut">Zielerreichung</span></div>
- <div class="bar"><div class="G" style="width:${tot?t.G/tot*100:0}%"></div><div class="Y" style="width:${tot?t.Y/tot*100:0}%"></div><div class="R" style="width:${tot?t.R/tot*100:0}%"></div></div>
- <div class="row"><span>🔵 ${t.G}</span><span>🟡 ${t.Y}</span><span>🔴 ${t.R}</span></div>
+ <div class="bar"><div class="G" style="width:${tot?t.G/tot*100:0}%"></div><div class="R" style="width:${tot?t.R/tot*100:0}%"></div></div>
+ <div class="row"><span>🔵 Ja: ${t.G}</span><span>🔴 Nein: ${t.R}</span></div>
  <hr style="border:0;border-top:1px solid var(--c7)">`+
  AREAS.map(a=>`<div class="row"><span>${a.n}</span><span class="mut">${per[a.k].G} von ${per[a.k].n} Tagen Ja</span></div>`).join('')+`<p>${msg}</p>`;
 }

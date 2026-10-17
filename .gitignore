@@ -1,0 +1,23 @@
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.gradle/
+local.properties
+captures/
+.cxx/
+
+# Gradle
+build/
+app/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Keystores und Signierdaten niemals committen
+*.keystore
+*.jks
+release.keystore
+
+# macOS
+.DS_Store
+
+# Logs
+*.log

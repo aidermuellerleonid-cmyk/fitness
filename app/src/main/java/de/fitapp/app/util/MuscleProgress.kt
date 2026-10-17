@@ -56,7 +56,15 @@ object MuscleProgressCalculator {
             val totalSets = groupLogs.sumOf { it.sets }
             val average = StrengthBenchmark.averageOneRepMax(group, bodyWeightKg, age, gender)
 
+            val configuredMax = when (group) {
+                MuscleGroup.BRUST -> profile?.benchPressMaxKg
+                MuscleGroup.BEINE -> maxOfOrNull(profile?.squatMaxKg, profile?.legPressMaxKg)
+                else -> null
+            }
             if (groupLogs.isEmpty() || totalSets < MIN_SETS_FOR_DATA) {
+                if (configuredMax != null && configuredMax > 0f && group in setOf(MuscleGroup.BRUST, MuscleGroup.BEINE)) {
+                    return@map MuscleProgressResult(group, true, RATING_BASELINE, 0, configuredMax, configuredMax)
+                }
                 return@map MuscleProgressResult(
                     group = group,
                     hasEnoughData = false,
@@ -67,8 +75,19 @@ object MuscleProgressCalculator {
                 )
             }
 
-            val best = groupLogs.maxOf { estimateOneRepMax(it.weightKg, it.reps) }
-            val ratio = (best / average).coerceAtLeast(0.05f)
+            val candidates = groupLogs.map { log ->
+                val liftBaseline = when {
+                    group == MuscleGroup.BRUST && log.exerciseName.contains("bankdr", ignoreCase = true) -> profile?.benchPressMaxKg
+                    group == MuscleGroup.BEINE && log.exerciseName.contains("kniebeug", ignoreCase = true) -> profile?.squatMaxKg
+                    group == MuscleGroup.BEINE && log.exerciseName.contains("beinpresse", ignoreCase = true) -> profile?.legPressMaxKg
+                    else -> null
+                }?.takeIf { it > 0f } ?: average
+                Triple(estimateOneRepMax(log.weightKg, log.reps), liftBaseline, log.sets)
+            }
+            val bestCandidate = candidates.maxBy { it.first / it.second }
+            val best = bestCandidate.first
+            val ratingBaseline = bestCandidate.second
+            val ratio = (best / ratingBaseline).coerceAtLeast(0.05f)
             val rating = (RATING_BASELINE + RATING_LOG2_SCALE * (ln(ratio) / ln(2f))).coerceIn(0f, 10f)
 
             MuscleProgressResult(
@@ -77,7 +96,7 @@ object MuscleProgressCalculator {
                 rating = rating,
                 totalSets = totalSets,
                 estimatedOneRepMaxKg = best,
-                averageOneRepMaxKg = average
+                averageOneRepMaxKg = ratingBaseline
             )
         }
     }
@@ -88,3 +107,6 @@ object MuscleProgressCalculator {
         return weightKg * (1f + min(reps, 20) / 30f)
     }
 }
+
+private fun maxOfOrNull(first: Float?, second: Float?): Float? = listOfNotNull(first, second).maxOrNull()
+

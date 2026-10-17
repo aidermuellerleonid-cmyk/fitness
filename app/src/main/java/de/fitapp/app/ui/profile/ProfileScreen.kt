@@ -35,21 +35,27 @@ fun ProfileScreen(viewModel: AppViewModel) {
     var newWeight by remember { mutableStateOf("") }
 
     fun save() {
+        val savedAge = age.toIntOrNull() ?: current.age
+        val savedHeight = heightCm.toIntOrNull() ?: current.heightCm
+        val savedWeight = weightKg.toFloatOrNull() ?: current.weightKg
+        val savedCalories = calorieGoal.toIntOrNull() ?: current.dailyCalorieGoal
+        val updatedMacros = CalorieCalculator.macrosForCalories(savedCalories, savedWeight, savedHeight, goal, savedAge)
+        val bodyOrGoalChanged = savedAge != current.age || savedHeight != current.heightCm || savedWeight != current.weightKg || goal != current.goal
         viewModel.saveProfile(
             current.copy(
-                age = age.toIntOrNull() ?: current.age,
-                heightCm = heightCm.toIntOrNull() ?: current.heightCm,
-                weightKg = weightKg.toFloatOrNull() ?: current.weightKg,
+                age = savedAge,
+                heightCm = savedHeight,
+                weightKg = savedWeight,
                 targetWeightKg = targetWeightKg.toFloatOrNull(),
                 goal = goal,
                 gender = gender,
                 activityLevel = activity,
-                dailyCalorieGoal = calorieGoal.toIntOrNull() ?: current.dailyCalorieGoal,
-                dailyProteinGoalG = proteinGoal.toIntOrNull() ?: current.dailyProteinGoalG,
-                dailyCarbsGoalG = carbsGoal.toIntOrNull() ?: current.dailyCarbsGoalG,
+                dailyCalorieGoal = savedCalories,
+                dailyProteinGoalG = if (bodyOrGoalChanged) updatedMacros.proteinG else proteinGoal.toIntOrNull() ?: updatedMacros.proteinG,
+                dailyCarbsGoalG = if (bodyOrGoalChanged) updatedMacros.carbsG else carbsGoal.toIntOrNull() ?: updatedMacros.carbsG,
                 dailySugarLimitG = sugarLimit.toIntOrNull() ?: current.dailySugarLimitG,
-                dailyFatGoalG = fatGoal.toIntOrNull() ?: current.dailyFatGoalG,
-                dailyFiberGoalG = fiberGoal.toIntOrNull() ?: current.dailyFiberGoalG
+                dailyFatGoalG = if (bodyOrGoalChanged) updatedMacros.fatG else fatGoal.toIntOrNull() ?: updatedMacros.fatG,
+                dailyFiberGoalG = fiberGoal.toIntOrNull() ?: (savedCalories * 14.6 / 1000).toInt().coerceAtLeast(30)
             )
         )
     }
@@ -103,10 +109,12 @@ fun ProfileScreen(viewModel: AppViewModel) {
                     calorieGoal = text
                     text.toIntOrNull()?.let { newGoal ->
                         val w = weightKg.toFloatOrNull() ?: current.weightKg
-                        val macros = CalorieCalculator.macrosForCalories(newGoal, w, goal)
+                        val macros = CalorieCalculator.macrosForCalories(newGoal, w, heightCm.toIntOrNull() ?: current.heightCm, goal, age.toIntOrNull() ?: current.age)
                         proteinGoal = macros.proteinG.toString()
                         carbsGoal = macros.carbsG.toString()
                         fatGoal = macros.fatG.toString()
+                        fiberGoal = (newGoal * 14.6 / 1000).toInt().coerceAtLeast(30).toString()
+                        sugarLimit = (newGoal * 0.10 / 4).toInt().toString()
                     }
                 },
                 label = { Text("Kalorien (kcal)") },
@@ -152,3 +160,4 @@ private fun activityLabel(a: ActivityLevel) = when (a) {
     ActivityLevel.ACTIVE -> "Sehr aktiv"
     ActivityLevel.VERY_ACTIVE -> "Extrem aktiv"
 }
+

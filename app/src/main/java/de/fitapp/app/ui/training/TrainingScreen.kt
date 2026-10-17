@@ -17,8 +17,10 @@ import androidx.compose.ui.window.Dialog
 import de.fitapp.app.data.entity.ExerciseLogEntity
 import de.fitapp.app.data.entity.MuscleGroup
 import de.fitapp.app.ui.AppViewModel
+import de.fitapp.app.ui.progress.MuscleRadarChart
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.round
 
 private val commonExercises = mapOf(
     "Bankdrücken" to MuscleGroup.BRUST,
@@ -44,6 +46,7 @@ private fun MuscleGroup.label() = when (this) {
 @Composable
 fun TrainingScreen(viewModel: AppViewModel) {
     val logs by viewModel.exerciseLogs.collectAsState()
+    val muscleProgress by viewModel.muscleProgress.collectAsState()
     var showAdd by remember { mutableStateOf(false) }
     val formatter = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy") }
 
@@ -53,15 +56,28 @@ fun TrainingScreen(viewModel: AppViewModel) {
             FloatingActionButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Add, contentDescription = "Übung hinzufügen") }
         }
     ) { padding ->
-        if (logs.isEmpty()) {
-            Column(Modifier.padding(padding).padding(24.dp)) {
-                Text("Noch keine Trainingseinträge. Tippe auf +, um deine erste Übung zu protokollieren.")
+        LazyColumn(
+            Modifier.padding(padding).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                ElevatedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Trainingsbewertung", style = MaterialTheme.typography.titleMedium)
+                        Text("Deine Werte werden mit deinen Start-Maximalgewichten verglichen, sofern du sie eingetragen hast.", style = MaterialTheme.typography.bodySmall)
+                        if (muscleProgress.isNotEmpty()) MuscleRadarChart(muscleProgress) { it.label() }
+                        muscleProgress.filter { it.hasEnoughData }.forEach { result ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(result.group.label())
+                                Text("${round(result.rating * 10f) / 10f} / 10 · ${result.estimatedOneRepMaxKg.toInt()} kg / Start ${result.averageOneRepMaxKg.toInt()} kg")
+                            }
+                        }
+                    }
+                }
             }
-        } else {
-            LazyColumn(
-                Modifier.padding(padding).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            if (logs.isEmpty()) {
+                item { Text("Noch keine Trainingseinträge. Tippe auf +, um deine erste Übung zu protokollieren.") }
+            } else {
                 items(logs) { log -> ExerciseRow(log, formatter) }
             }
         }
@@ -152,3 +168,4 @@ private fun AddExerciseDialog(
         }
     }
 }
+

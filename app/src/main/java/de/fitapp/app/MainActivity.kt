@@ -23,7 +23,6 @@ import de.fitapp.app.ui.goals.GoalsScreen
 import de.fitapp.app.ui.onboarding.OnboardingScreen
 import de.fitapp.app.ui.profile.ProfileScreen
 import de.fitapp.app.ui.progress.ProgressScreen
-import de.fitapp.app.ui.sleep.SleepScreen
 import de.fitapp.app.ui.theme.FitAppTheme
 import de.fitapp.app.ui.training.TrainingScreen
 
@@ -31,12 +30,11 @@ private sealed class Dest(val route: String, val label: String, val icon: androi
     object Diary : Dest("diary", "Tagebuch", Icons.Filled.RestaurantMenu)
     object Training : Dest("training", "Training", Icons.Filled.FitnessCenter)
     object Progress : Dest("progress", "Fortschritt", Icons.Filled.Insights)
-    object Sleep : Dest("sleep", "Schlaf", Icons.Filled.Bedtime)
     object Profile : Dest("profile", "Profil", Icons.Filled.Person)
     object Goals : Dest("goals", "Ziele", Icons.Filled.CalendarMonth)
 }
 
-private val bottomDestinations = listOf(Dest.Diary, Dest.Goals, Dest.Training, Dest.Progress, Dest.Sleep, Dest.Profile)
+private val bottomDestinations = listOf(Dest.Diary, Dest.Goals, Dest.Training, Dest.Progress, Dest.Profile)
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AppViewModel by viewModels()
@@ -104,8 +102,8 @@ private fun MainScaffold(viewModel: AppViewModel) {
             composable(Dest.Goals.route) { GoalsScreen() }
             composable(Dest.Training.route) { TrainingScreen(viewModel) }
             composable(Dest.Progress.route) { ProgressScreen(viewModel) }
-            composable(Dest.Sleep.route) { SleepScreen(viewModel) }
             composable(Dest.Profile.route) { ProfileScreen(viewModel) }
         }
     }
 }
+

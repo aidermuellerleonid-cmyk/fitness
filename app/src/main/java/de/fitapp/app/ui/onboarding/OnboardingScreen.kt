@@ -17,31 +17,6 @@ private val stepTitles = listOf(
     "Willkommen", "Ziel", "Körperdaten", "Aktivität", "Ernährungsziele", "Trainingsstand", "Startwerte"
 )
 
-private data class ExerciseBaseline(val exerciseName: String, var weightKg: String, var reps: String)
-
-private val trainingOrder = listOf(
-    MuscleGroup.BRUST, MuscleGroup.RUECKEN, MuscleGroup.BEINE,
-    MuscleGroup.SCHULTERN, MuscleGroup.ARME, MuscleGroup.BAUCH
-)
-
-private fun defaultBaselines(): Map<MuscleGroup, ExerciseBaseline> = linkedMapOf(
-    MuscleGroup.BRUST to ExerciseBaseline("Bankdrücken", "", ""),
-    MuscleGroup.RUECKEN to ExerciseBaseline("Rudern", "", ""),
-    MuscleGroup.BEINE to ExerciseBaseline("Kniebeuge", "", ""),
-    MuscleGroup.SCHULTERN to ExerciseBaseline("Schulterdrücken", "", ""),
-    MuscleGroup.ARME to ExerciseBaseline("Bizepscurls", "", ""),
-    MuscleGroup.BAUCH to ExerciseBaseline("Crunches", "", "")
-)
-
-private fun muscleGroupLabel(group: MuscleGroup) = when (group) {
-    MuscleGroup.BRUST -> "Brust"
-    MuscleGroup.BEINE -> "Beine"
-    MuscleGroup.BAUCH -> "Bauch"
-    MuscleGroup.ARME -> "Arme"
-    MuscleGroup.RUECKEN -> "Rücken"
-    MuscleGroup.SCHULTERN -> "Schultern"
-}
-
 @Composable
 fun OnboardingScreen(viewModel: AppViewModel) {
     var step by remember { mutableIntStateOf(0) }
@@ -59,16 +34,23 @@ fun OnboardingScreen(viewModel: AppViewModel) {
     var proteinGoal by remember { mutableStateOf(120) }
     var carbsGoal by remember { mutableStateOf(250) }
     var fatGoal by remember { mutableStateOf(70) }
+    var fiberGoal by remember { mutableStateOf(30) }
+    var sugarGoal by remember { mutableStateOf(50) }
 
-    val baselines = remember { mutableStateMapOf<MuscleGroup, ExerciseBaseline>().apply { putAll(defaultBaselines()) } }
+    var benchMax by remember { mutableStateOf("") }
+    var squatMax by remember { mutableStateOf("") }
+    var legPressMax by remember { mutableStateOf("") }
 
     fun applyMacrosForCalories(newCalorieGoal: Int) {
         calorieGoal = newCalorieGoal
         val w = weightKg.toFloatOrNull() ?: 75f
-        val macros = CalorieCalculator.macrosForCalories(newCalorieGoal, w, goal)
+        val h = heightCm.toIntOrNull() ?: 175
+        val macros = CalorieCalculator.macrosForCalories(newCalorieGoal, w, h, goal, age.toIntOrNull() ?: 30)
         proteinGoal = macros.proteinG
         carbsGoal = macros.carbsG
         fatGoal = macros.fatG
+        fiberGoal = (newCalorieGoal * 14.6 / 1000).toInt().coerceAtLeast(30)
+        sugarGoal = (newCalorieGoal * 0.10 / 4).toInt()
     }
 
     fun applyEstimateIfPossible() {
@@ -80,6 +62,8 @@ fun OnboardingScreen(viewModel: AppViewModel) {
         proteinGoal = estimate.proteinG
         carbsGoal = estimate.carbsG
         fatGoal = estimate.fatG
+        fiberGoal = estimate.fiberG
+        sugarGoal = estimate.sugarLimitG
     }
 
     fun finish(skippedRest: Boolean = false) {
@@ -96,25 +80,16 @@ fun OnboardingScreen(viewModel: AppViewModel) {
             dailyProteinGoalG = proteinGoal,
             dailyCarbsGoalG = carbsGoal,
             dailyFatGoalG = fatGoal,
+            dailyFiberGoalG = fiberGoal,
+            dailySugarLimitG = sugarGoal,
+            benchPressMaxKg = benchMax.toFloatOrNull()?.takeIf { it > 0f },
+            squatMaxKg = squatMax.toFloatOrNull()?.takeIf { it > 0f },
+            legPressMaxKg = legPressMax.toFloatOrNull()?.takeIf { it > 0f },
             onboardingCompleted = true
         )
         viewModel.saveProfile(profile)
 
-        // Trainings-Startwerte speichern, damit das Fortschritts-Radardiagramm von Anfang
-        // an Daten hat, statt erst nach mehreren Trainingseinheiten etwas anzuzeigen.
-        baselines.forEach { (group, baseline) ->
-            val w = baseline.weightKg.toFloatOrNull()
-            val r = baseline.reps.toIntOrNull()
-            if (w != null && w > 0f && r != null && r > 0) {
-                viewModel.addExerciseLog(
-                    name = baseline.exerciseName,
-                    group = group,
-                    weightKg = w,
-                    reps = r,
-                    sets = 3
-                )
-            }
-        }
+
     }
 
     Scaffold(
@@ -153,7 +128,7 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                     )
                     Text(
                         "In wenigen Schritten richten wir deine App ein. Wir fragen nach deinem " +
-                            "Ziel, ein paar Körperdaten und deinem Trainingsstand. Damit können wir " +
+                            "Ziel, Körperdaten und deine persönlichen Kraftwerte. Damit können wir " +
                             "passende Kalorien- und Trainingsvorschläge berechnen. Du kannst jeden " +
                             "Schritt überspringen und später im Profil ändern."
                     )
@@ -167,7 +142,7 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                 }
                 2 -> {
                     Text("Deine Körperdaten", style = MaterialTheme.typography.titleMedium)
-                    Text("Diese Angaben werden nur für die Berechnung deines Kalorienbedarfs verwendet.")
+                    Text("Diese Angaben helfen uns, Kalorien- und Nährstoffziele passend zu berechnen.")
                     OutlinedTextField(age, { age = it }, label = { Text("Alter (Jahre)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number))
                     OutlinedTextField(heightCm, { heightCm = it }, label = { Text("Größe (cm)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number))
                     OutlinedTextField(weightKg, { weightKg = it }, label = { Text("Aktuelles Gewicht (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal))
@@ -199,6 +174,8 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                     NumberField("Eiweiß (g)", proteinGoal) { proteinGoal = it }
                     NumberField("Kohlenhydrate (g)", carbsGoal) { carbsGoal = it }
                     NumberField("Fett (g)", fatGoal) { fatGoal = it }
+                    NumberField("Ballaststoffe (g)", fiberGoal) { fiberGoal = it }
+                    NumberField("Zucker-Orientierungswert (g)", sugarGoal) { sugarGoal = it }
                 }
                 5 -> {
                     Text("Trainingserfahrung", style = MaterialTheme.typography.titleMedium)
@@ -207,41 +184,11 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                     GoalOption("Erfahren", experience == TrainingExperience.ADVANCED) { experience = TrainingExperience.ADVANCED }
                 }
                 6 -> {
-                    Text("Deine aktuellen Werte pro Muskelgruppe", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Trag zu jeder Gruppe eine Übung mit dem Gewicht und den Wiederholungen ein, " +
-                            "die du aktuell schaffst. Damit zeigt dir dein Fortschritts-Radar von Anfang " +
-                            "an etwas an, statt erst nach mehreren Trainingseinheiten. Du kannst Felder " +
-                            "auch leer lassen und später im Trainingsbereich nachtragen."
-                    )
-                    trainingOrder.forEach { group ->
-                        val baseline = baselines.getValue(group)
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(muscleGroupLabel(group), style = MaterialTheme.typography.titleSmall)
-                            OutlinedTextField(
-                                value = baseline.exerciseName,
-                                onValueChange = { baselines[group] = baseline.copy(exerciseName = it) },
-                                label = { Text("Übung") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
-                                    value = baseline.weightKg,
-                                    onValueChange = { baselines[group] = baseline.copy(weightKg = it) },
-                                    label = { Text("Gewicht (kg)") },
-                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                OutlinedTextField(
-                                    value = baseline.reps,
-                                    onValueChange = { baselines[group] = baseline.copy(reps = it) },
-                                    label = { Text("Wiederholungen") },
-                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
+                    Text("Deine persönlichen Bestleistungen", style = MaterialTheme.typography.titleMedium)
+                    Text("Gib dein aktuelles Maximalgewicht für eine Wiederholung ein. Die Angaben werden als persönliche Ausgangswerte für deine Trainingsbewertung genutzt. Du kannst Felder überspringen.")
+                    OutlinedTextField(benchMax, { benchMax = it }, label = { Text("Bankdrücken (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(squatMax, { squatMax = it }, label = { Text("Kniebeuge (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(legPressMax, { legPressMax = it }, label = { Text("Beinpresse (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -269,3 +216,4 @@ private fun NumberField(label: String, value: Int, onChange: (Int) -> Unit) {
         modifier = Modifier.fillMaxWidth()
     )
 }
+

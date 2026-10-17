@@ -28,6 +28,9 @@ data class UserProfile(
     val dailySugarLimitG: Int = 50,
     val dailyFatGoalG: Int = 70,
     val dailyFiberGoalG: Int = 30,
+    val benchPressMaxKg: Float? = null,
+    val squatMaxKg: Float? = null,
+    val legPressMaxKg: Float? = null,
     val onboardingCompleted: Boolean = false
 )
 
@@ -113,3 +116,4 @@ data class WeightEntryEntity(
     val dateEpochDay: Long,
     val weightKg: Float
 )
+

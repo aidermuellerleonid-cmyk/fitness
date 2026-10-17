@@ -4,6 +4,7 @@ import de.fitapp.app.data.entity.ActivityLevel
 import de.fitapp.app.data.entity.Gender
 import de.fitapp.app.data.entity.Goal
 import kotlin.math.roundToInt
+import kotlin.math.pow
 
 data class CalorieEstimate(
     val bmr: Int,
@@ -32,13 +33,17 @@ object CalorieCalculator {
      * Muskelerhalt/-aufbau unabhängig vom Kalorienziel), Fett wird als fester Anteil der
      * Kalorien berechnet, Kohlenhydrate füllen den Rest auf.
      */
-    fun macrosForCalories(calorieGoal: Int, weightKg: Float, goal: Goal): Macros {
-        val proteinPerKg = when (goal) {
-            Goal.GAIN_MUSCLE -> 1.8
-            Goal.LOSE_WEIGHT -> 1.6
-            else -> 1.2
+    fun macrosForCalories(calorieGoal: Int, weightKg: Float, heightCm: Int, goal: Goal, age: Int = 30): Macros {
+        val heightM = (heightCm / 100f).coerceAtLeast(1.2f)
+        val bmi = weightKg / (heightM * heightM)
+        val referenceWeightKg = if (bmi > 25f) 22f * heightM * heightM else weightKg
+        val proteinPerKg = when {
+            age >= 65 -> 1.0
+            goal == Goal.GAIN_MUSCLE || goal == Goal.LOSE_WEIGHT -> 1.2
+            else -> 0.8
         }
-        val proteinG = (proteinPerKg * weightKg).roundToInt()
+        val energyFactor = (calorieGoal / (referenceWeightKg * 30f)).toDouble().coerceIn(0.75, 1.25)
+        val proteinG = (proteinPerKg * referenceWeightKg * energyFactor.pow(0.12)).roundToInt()
         val proteinKcal = proteinG * 4
         val fatG = (calorieGoal * 0.28 / 9).roundToInt()
         val fatKcal = fatG * 9
@@ -73,7 +78,7 @@ object CalorieCalculator {
             Goal.STAY, Goal.GENERAL_FITNESS -> maintenance
         }.coerceAtLeast(1200.0).roundToInt() // Sicherheitsuntergrenze gegen unrealistisch niedrige Ziele
 
-        val macros = macrosForCalories(goalKcal, weightKg, goal)
+        val macros = macrosForCalories(goalKcal, weightKg, heightCm, goal, age)
 
         return CalorieEstimate(
             bmr = bmr.roundToInt(),
@@ -82,8 +87,9 @@ object CalorieCalculator {
             proteinG = macros.proteinG,
             carbsG = macros.carbsG,
             fatG = macros.fatG,
-            fiberG = 30,
-            sugarLimitG = 50
+            fiberG = (goalKcal * 14.6 / 1000).roundToInt().coerceAtLeast(30),
+            sugarLimitG = (goalKcal * 0.10 / 4).roundToInt()
         )
     }
 }
+

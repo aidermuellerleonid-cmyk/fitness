@@ -53,9 +53,9 @@ fun ProfileScreen(viewModel: AppViewModel) {
                 dailyCalorieGoal = savedCalories,
                 dailyProteinGoalG = if (bodyOrGoalChanged) updatedMacros.proteinG else proteinGoal.toIntOrNull() ?: updatedMacros.proteinG,
                 dailyCarbsGoalG = if (bodyOrGoalChanged) updatedMacros.carbsG else carbsGoal.toIntOrNull() ?: updatedMacros.carbsG,
-                dailySugarLimitG = sugarLimit.toIntOrNull() ?: current.dailySugarLimitG,
+                dailySugarLimitG = if (bodyOrGoalChanged) (savedCalories * 0.10 / 4).toInt() else sugarLimit.toIntOrNull() ?: current.dailySugarLimitG,
                 dailyFatGoalG = if (bodyOrGoalChanged) updatedMacros.fatG else fatGoal.toIntOrNull() ?: updatedMacros.fatG,
-                dailyFiberGoalG = fiberGoal.toIntOrNull() ?: (savedCalories * 14.6 / 1000).toInt().coerceAtLeast(30)
+                dailyFiberGoalG = if (bodyOrGoalChanged) (savedCalories * 14.6 / 1000).toInt().coerceAtLeast(30) else fiberGoal.toIntOrNull() ?: (savedCalories * 14.6 / 1000).toInt().coerceAtLeast(30)
             )
         )
     }
@@ -100,7 +100,7 @@ fun ProfileScreen(viewModel: AppViewModel) {
             Text("Tagesziele", style = MaterialTheme.typography.titleMedium)
             Text(
                 "Wenn du die Kalorien änderst, werden Eiweiß/Kohlenhydrate/Fett automatisch " +
-                    "passend neu berechnet.",
+                    "passend neu berechnet. Der Zuckerwert ist ein Orientierungswert; das Tagebuch zählt auch natürlichen Zucker.",
                 style = MaterialTheme.typography.bodySmall
             )
             OutlinedTextField(
@@ -123,7 +123,7 @@ fun ProfileScreen(viewModel: AppViewModel) {
             )
             OutlinedTextField(proteinGoal, { proteinGoal = it }, label = { Text("Eiweiß (g)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
             OutlinedTextField(carbsGoal, { carbsGoal = it }, label = { Text("Kohlenhydrate (g)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(sugarLimit, { sugarLimit = it }, label = { Text("Zuckerlimit (g)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(sugarLimit, { sugarLimit = it }, label = { Text("Zucker-Orientierungswert (g)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
             OutlinedTextField(fatGoal, { fatGoal = it }, label = { Text("Fett (g)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
             OutlinedTextField(fiberGoal, { fiberGoal = it }, label = { Text("Ballaststoffe (g)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
 

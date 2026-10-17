@@ -110,7 +110,7 @@ private fun DailyBalanceCard(
             NutrientRow("Eiweiß", totals.protein, proteinGoal.toFloat(), "g")
             NutrientRow("Kohlenhydrate", totals.carbs, carbsGoal.toFloat(), "g")
             NutrientRow("Fett", totals.fat, fatGoal.toFloat(), "g")
-            NutrientRow("Zucker", totals.sugar, sugarLimit.toFloat(), "g", isLimit = true)
+            NutrientRow("Zucker inkl. natürlichem", totals.sugar, sugarLimit.toFloat(), "g", isLimit = true)
             NutrientRow("Ballaststoffe", totals.fiber, fiberGoal.toFloat(), "g")
         }
     }
@@ -189,3 +189,4 @@ private fun qualityLabel(source: FoodSource): String = when (source) {
     FoodSource.MANUAL -> "manuell eingegeben"
     FoodSource.CUSTOM -> "eigener Eintrag"
 }
+

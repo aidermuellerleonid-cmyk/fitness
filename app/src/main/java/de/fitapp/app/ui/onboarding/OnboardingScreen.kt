@@ -168,7 +168,8 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                     Text(
                         "Basierend auf deinen Angaben schlagen wir folgende Werte vor – ein " +
                             "Näherungswert, den du jederzeit anpassen kannst. Wenn du die Kalorien " +
-                            "änderst, passen sich Eiweiß/Kohlenhydrate/Fett automatisch an."
+                            "änderst, passen sich die Nährstoffziele automatisch an. Der Zuckerwert " +
+                            "ist eine Orientierung; erfasst wird auch natürlicher Zucker."
                     )
                     NumberField("Kalorien (kcal)", calorieGoal) { applyMacrosForCalories(it) }
                     NumberField("Eiweiß (g)", proteinGoal) { proteinGoal = it }

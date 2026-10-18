@@ -85,6 +85,18 @@ interface ExerciseDao {
 }
 
 @Dao
+interface ExerciseBaselineDao {
+    @Query("SELECT * FROM exercise_baseline ORDER BY muscleGroup, id")
+    fun observeAll(): Flow<List<ExerciseBaselineEntity>>
+
+    @Query("DELETE FROM exercise_baseline")
+    suspend fun deleteAll()
+
+    @Insert
+    suspend fun insertAll(entries: List<ExerciseBaselineEntity>)
+}
+
+@Dao
 interface SleepDao {
     @Insert
     suspend fun insert(entry: SleepEntryEntity): Long

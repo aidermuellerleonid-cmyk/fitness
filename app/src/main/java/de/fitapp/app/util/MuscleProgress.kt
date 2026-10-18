@@ -1,5 +1,6 @@
 package de.fitapp.app.util
 
+import de.fitapp.app.data.entity.ExerciseBaselineEntity
 import de.fitapp.app.data.entity.ExerciseLogEntity
 import de.fitapp.app.data.entity.Gender
 import de.fitapp.app.data.entity.MuscleGroup
@@ -8,105 +9,76 @@ import java.time.LocalDate
 import kotlin.math.ln
 import kotlin.math.min
 
-/** Zeitraum, der in die Fortschrittsauswertung pro Muskelgruppe einfließt. */
-const val PROGRESS_WINDOW_DAYS = 90L
-
-/** Schon ein einziger protokollierter Satz reicht, damit eine Muskelgruppe bewertet wird. */
-private const val MIN_SETS_FOR_DATA = 1
-
-// log2-Skalierung der Bewertung: pro Verdopplung des Altersdurchschnitts +3.7 Punkte.
-// Damit ergibt sich z. B. 5.0 = genau Durchschnitt, 8.7 = doppelter Durchschnitt.
-private const val RATING_LOG2_SCALE = 3.7f
-private const val RATING_BASELINE = 5.0f
+const val TRAINING_WINDOW_DAYS = 90L
+private const val RATING_LOG2_SCALE = 3f
+private const val RATING_BASELINE = 5f
+private const val TWELVE_REP_FACTOR = 1.4f
 
 data class MuscleProgressResult(
     val group: MuscleGroup,
     val hasEnoughData: Boolean,
-    val rating: Float, // 0.0..10.0 – 5.0 entspricht dem geschätzten Altersdurchschnitt
+    val rating: Float,
     val totalSets: Int,
-    val estimatedOneRepMaxKg: Float,
-    val averageOneRepMaxKg: Float
+    val averageTwelveRepWeightKg: Float,
+    val averageTwelveRepBenchmarkKg: Float
 ) {
-    /** Für Anzeigen, die weiterhin einen 0..100-Wert erwarten (z. B. das Radardiagramm). */
     val ratingPercent: Int get() = ((rating / 10f) * 100f).toInt()
 }
 
-/**
- * Bewertet jede Muskelgruppe direkt im Vergleich zu einem alters-, geschlechts- und
- * körpergewichtsabhängigen Durchschnittswert (siehe StrengthBenchmark):
- * - 5.0 = exakt der geschätzte Durchschnitt für diese Person.
- * - Jede Verdopplung des Durchschnitts erhöht die Bewertung um +3.7 (z. B. 8.7 beim Doppelten).
- * - Es zählt das BESTE geschätzte 1-Wiederholungs-Maximum im Zeitfenster – ein einzelner
- *   starker Satz hebt die Bewertung also sofort an, ohne dass mehrere Einträge nötig sind.
- */
+/** A single consistent scale: average = 5/10, twice average = 8/10, four times = 10/10. */
 object MuscleProgressCalculator {
 
     fun calculate(
         logs: List<ExerciseLogEntity>,
+        baselines: List<ExerciseBaselineEntity>,
         profile: UserProfile?,
         today: LocalDate = LocalDate.now()
     ): List<MuscleProgressResult> {
-        val sinceEpochDay = today.minusDays(PROGRESS_WINDOW_DAYS).toEpochDay()
+        val sinceEpochDay = today.minusDays(TRAINING_WINDOW_DAYS).toEpochDay()
         val age = profile?.age ?: 30
         val gender = profile?.gender ?: Gender.DIVERS
         val bodyWeightKg = profile?.weightKg ?: 75f
 
         return MuscleGroup.values().map { group ->
             val groupLogs = logs.filter { it.muscleGroup == group && it.dateEpochDay >= sinceEpochDay }
-            val totalSets = groupLogs.sumOf { it.sets }
-            val average = StrengthBenchmark.averageOneRepMax(group, bodyWeightKg, age, gender)
+            val byExercise = linkedMapOf<String, Pair<String, Float>>()
 
-            val configuredMax = when (group) {
-                MuscleGroup.BRUST -> profile?.benchPressMaxKg
-                MuscleGroup.BEINE -> maxOfOrNull(profile?.squatMaxKg, profile?.legPressMaxKg)
-                else -> null
-            }
-            if (groupLogs.isEmpty() || totalSets < MIN_SETS_FOR_DATA) {
-                if (configuredMax != null && configuredMax > 0f && group in setOf(MuscleGroup.BRUST, MuscleGroup.BEINE)) {
-                    return@map MuscleProgressResult(group, true, RATING_BASELINE, 0, configuredMax, configuredMax)
+            baselines.filter { it.muscleGroup == group && it.maxWeightKg > 0f }.forEach { baseline ->
+                val key = baseline.exerciseName.trim().lowercase()
+                val prior = byExercise[key]
+                if (prior == null || baseline.maxWeightKg > prior.second) {
+                    byExercise[key] = baseline.exerciseName to baseline.maxWeightKg
                 }
-                return@map MuscleProgressResult(
-                    group = group,
-                    hasEnoughData = false,
-                    rating = 0f,
-                    totalSets = totalSets,
-                    estimatedOneRepMaxKg = 0f,
-                    averageOneRepMaxKg = average
-                )
+            }
+            groupLogs.forEach { log ->
+                if (log.weightKg <= 0f) return@forEach
+                val key = log.exerciseName.trim().lowercase()
+                val estimatedTwelveRepWeight = log.weightKg * (1f + min(log.reps, 20).coerceAtLeast(0) / 30f) / TWELVE_REP_FACTOR
+                val prior = byExercise[key]
+                if (prior == null || estimatedTwelveRepWeight > prior.second) {
+                    byExercise[key] = log.exerciseName to estimatedTwelveRepWeight
+                }
             }
 
-            val candidates = groupLogs.map { log ->
-                val liftBaseline = when {
-                    group == MuscleGroup.BRUST && log.exerciseName.contains("bankdr", ignoreCase = true) -> profile?.benchPressMaxKg
-                    group == MuscleGroup.BEINE && log.exerciseName.contains("kniebeug", ignoreCase = true) -> profile?.squatMaxKg
-                    group == MuscleGroup.BEINE && log.exerciseName.contains("beinpresse", ignoreCase = true) -> profile?.legPressMaxKg
-                    else -> null
-                }?.takeIf { it > 0f } ?: average
-                Triple(estimateOneRepMax(log.weightKg, log.reps), liftBaseline, log.sets)
+            if (byExercise.isEmpty()) {
+                return@map MuscleProgressResult(group, false, 0f, groupLogs.sumOf { it.sets }, 0f, 0f)
             }
-            val bestCandidate = candidates.maxBy { it.first / it.second }
-            val best = bestCandidate.first
-            val ratingBaseline = bestCandidate.second
-            val ratio = (best / ratingBaseline).coerceAtLeast(0.05f)
-            val rating = (RATING_BASELINE + RATING_LOG2_SCALE * (ln(ratio) / ln(2f))).coerceIn(0f, 10f)
+
+            val comparisons = byExercise.values.map { (exerciseName, weight12) ->
+                val benchmark12 = StrengthBenchmark.averageTwelveRepWeight(exerciseName, group, bodyWeightKg, age, gender)
+                val ratio = (weight12 / benchmark12).coerceAtLeast(0.05f)
+                val rating = (RATING_BASELINE + RATING_LOG2_SCALE * (ln(ratio) / ln(2f))).coerceIn(0f, 10f)
+                Triple(rating, weight12, benchmark12)
+            }
 
             MuscleProgressResult(
                 group = group,
                 hasEnoughData = true,
-                rating = rating,
-                totalSets = totalSets,
-                estimatedOneRepMaxKg = best,
-                averageOneRepMaxKg = ratingBaseline
+                rating = comparisons.map { it.first }.average().toFloat(),
+                totalSets = groupLogs.sumOf { it.sets },
+                averageTwelveRepWeightKg = comparisons.map { it.second }.average().toFloat(),
+                averageTwelveRepBenchmarkKg = comparisons.map { it.third }.average().toFloat()
             )
         }
     }
-
-    /** Epley-Formel zur Schätzung des 1-Wiederholungs-Maximums. */
-    private fun estimateOneRepMax(weightKg: Float, reps: Int): Float {
-        if (reps <= 0) return weightKg
-        return weightKg * (1f + min(reps, 20) / 30f)
-    }
 }
-
-private fun maxOfOrNull(first: Float?, second: Float?): Float? = listOfNotNull(first, second).maxOrNull()
-

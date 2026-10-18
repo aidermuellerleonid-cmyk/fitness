@@ -60,7 +60,7 @@ fun ProfileScreen(viewModel: AppViewModel) {
         )
     }
 
-    Scaffold(topBar = { LargeTopAppBar(title = { Text("Profil", fontWeight = FontWeight.Bold) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Profil", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }) }) { padding ->
         Column(
             Modifier
                 .padding(padding)
@@ -160,4 +160,3 @@ private fun activityLabel(a: ActivityLevel) = when (a) {
     ActivityLevel.ACTIVE -> "Sehr aktiv"
     ActivityLevel.VERY_ACTIVE -> "Extrem aktiv"
 }
-

@@ -6,7 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -22,25 +25,29 @@ import de.fitapp.app.ui.diary.DiaryScreen
 import de.fitapp.app.ui.goals.GoalsScreen
 import de.fitapp.app.ui.onboarding.OnboardingScreen
 import de.fitapp.app.ui.profile.ProfileScreen
-import de.fitapp.app.ui.progress.ProgressScreen
 import de.fitapp.app.ui.theme.FitAppTheme
 import de.fitapp.app.ui.training.TrainingScreen
 
 private sealed class Dest(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Diary : Dest("diary", "Tagebuch", Icons.Filled.RestaurantMenu)
     object Training : Dest("training", "Training", Icons.Filled.FitnessCenter)
-    object Progress : Dest("progress", "Fortschritt", Icons.Filled.Insights)
     object Profile : Dest("profile", "Profil", Icons.Filled.Person)
     object Goals : Dest("goals", "Ziele", Icons.Filled.CalendarMonth)
 }
 
-private val bottomDestinations = listOf(Dest.Diary, Dest.Goals, Dest.Training, Dest.Progress, Dest.Profile)
+private val bottomDestinations = listOf(Dest.Diary, Dest.Goals, Dest.Training, Dest.Profile)
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AppViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = android.graphics.Color.rgb(8, 13, 22)
+        window.navigationBarColor = android.graphics.Color.rgb(5, 8, 13)
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = window.decorView.systemUiVisibility and
+            android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv() and
+            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
         setContent {
             FitAppTheme {
                 val state by viewModel.profileState.collectAsState()
@@ -87,7 +94,14 @@ private fun MainScaffold(viewModel: AppViewModel) {
                             }
                         },
                         icon = { Icon(dest.icon, contentDescription = dest.label) },
-                        label = { Text(dest.label) }
+                        label = {
+                            Text(
+                                dest.label,
+                                maxLines = 1,
+                                softWrap = false,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     )
                 }
             }
@@ -101,9 +115,7 @@ private fun MainScaffold(viewModel: AppViewModel) {
             composable(Dest.Diary.route) { DiaryScreen(viewModel) }
             composable(Dest.Goals.route) { GoalsScreen() }
             composable(Dest.Training.route) { TrainingScreen(viewModel) }
-            composable(Dest.Progress.route) { ProgressScreen(viewModel) }
             composable(Dest.Profile.route) { ProfileScreen(viewModel) }
         }
     }
 }
-

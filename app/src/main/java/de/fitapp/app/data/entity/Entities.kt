@@ -100,6 +100,15 @@ data class ExerciseLogEntity(
 
 enum class MuscleGroup { BRUST, BEINE, BAUCH, ARME, RUECKEN, SCHULTERN }
 
+/** Eine beim Einrichten eingetragene Übung und ihr Gewicht für die 12-Wiederholungs-Bewertung. */
+@Entity(tableName = "exercise_baseline")
+data class ExerciseBaselineEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val exerciseName: String,
+    val muscleGroup: MuscleGroup,
+    val maxWeightKg: Float
+)
+
 /** Ein Schlaf-Eintrag. */
 @Entity(tableName = "sleep_entry")
 data class SleepEntryEntity(
@@ -116,4 +125,3 @@ data class WeightEntryEntity(
     val dateEpochDay: Long,
     val weightKg: Float
 )
-

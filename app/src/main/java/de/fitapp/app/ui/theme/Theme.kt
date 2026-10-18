@@ -64,4 +64,3 @@ fun FitAppTheme(content: @Composable () -> Unit) {
 }
 
 val BrandBlueDark = BlueDeep
-

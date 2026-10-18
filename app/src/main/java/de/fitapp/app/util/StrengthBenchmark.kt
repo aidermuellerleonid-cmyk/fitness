@@ -30,6 +30,52 @@ object StrengthBenchmark {
     fun averageOneRepMax(group: MuscleGroup, bodyWeightKg: Float, age: Int, gender: Gender): Float {
         val reference = referenceOneRmAt75kgAge30[group] ?: 45f
 
+        return adjustedAverage(reference, bodyWeightKg, age, gender)
+    }
+
+    /** Altersgerechter grober 12-Wiederholungs-Vergleichswert für eine konkrete Übung. */
+    fun averageTwelveRepWeight(exerciseName: String, group: MuscleGroup, bodyWeightKg: Float, age: Int, gender: Gender): Float {
+        val name = exerciseName.lowercase().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
+        val referenceOneRm = when (group) {
+            MuscleGroup.BRUST -> when {
+                "flieg" in name || "fly" in name -> 22f
+                "brustpresse" in name || "chest press" in name -> 65f
+                "schraeg" in name || "incline" in name -> 48f
+                else -> 55f
+            }
+            MuscleGroup.RUECKEN -> when {
+                "kreuzheben" in name || "deadlift" in name -> 100f
+                "latzug" in name || "pulldown" in name -> 55f
+                else -> 60f
+            }
+            MuscleGroup.BEINE -> when {
+                "beinpresse" in name || "leg press" in name -> 130f
+                "beinstreck" in name || "extension" in name -> 50f
+                "beinbeug" in name || "leg curl" in name -> 45f
+                "kniebeug" in name || "squat" in name -> 85f
+                "ausfall" in name || "lunge" in name -> 65f
+                else -> 85f
+            }
+            MuscleGroup.SCHULTERN -> when {
+                "seitheben" in name || "lateral raise" in name -> 15f
+                "frontheben" in name || "front raise" in name -> 12f
+                else -> 38f
+            }
+            MuscleGroup.ARME -> when {
+                "trizeps" in name || "pushdown" in name || "push down" in name -> 35f
+                "bizeps" in name || "curl" in name -> 22f
+                else -> 28f
+            }
+            MuscleGroup.BAUCH -> when {
+                "maschine" in name || "machine" in name -> 55f
+                else -> 30f
+            }
+        }
+        return adjustedAverage(referenceOneRm, bodyWeightKg, age, gender) / 1.4f
+    }
+
+    private fun adjustedAverage(reference: Float, bodyWeightKg: Float, age: Int, gender: Gender): Float {
+
         // Kraft skaliert grob (aber nicht 1:1) mit dem Körpergewicht.
         val weightFactor = (bodyWeightKg / 75f).coerceIn(0.55f, 1.8f)
 

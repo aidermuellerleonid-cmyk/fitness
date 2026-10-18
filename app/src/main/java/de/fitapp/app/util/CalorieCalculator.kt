@@ -42,8 +42,8 @@ object CalorieCalculator {
             goal == Goal.GAIN_MUSCLE || goal == Goal.LOSE_WEIGHT -> 1.2
             else -> 0.8
         }
-        val energyFactor = (calorieGoal / (referenceWeightKg * 30f)).toDouble().coerceIn(0.75, 1.25)
-        val proteinG = (proteinPerKg * referenceWeightKg * energyFactor.pow(0.12)).roundToInt()
+        val energyFactor = (calorieGoal / (referenceWeightKg * 30f)).toDouble().coerceIn(0.8, 1.2)
+        val proteinG = (proteinPerKg * referenceWeightKg * energyFactor.pow(0.5)).roundToInt()
         val proteinKcal = proteinG * 4
         val fatG = (calorieGoal * 0.28 / 9).roundToInt()
         val fatKcal = fatG * 9
@@ -92,4 +92,3 @@ object CalorieCalculator {
         )
     }
 }
-

@@ -35,10 +35,10 @@ fun DiaryScreen(viewModel: AppViewModel) {
         )
     }
 
-    Scaffold(topBar = { LargeTopAppBar(title = {
-        Column {
-            Text("Ernährung", fontWeight = FontWeight.Bold)
-            Text("Dein Tag im Überblick", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Scaffold(topBar = { TopAppBar(title = {
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text("Ernährung", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Dein Tag im Überblick", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }) }) { padding ->
         LazyColumn(
@@ -97,14 +97,14 @@ private fun DailyBalanceCard(
     sugarLimit: Int, fatGoal: Int, fiberGoal: Int
 ) {
     ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("HEUTE IM BLICK", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text("HEUTE IM BLICK", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.Bottom) {
-                Text("${totals.kcal.toInt()}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("${totals.kcal.toInt()}", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text("von $kcalGoal kcal", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             val calorieProgress = if (kcalGoal > 0) (totals.kcal / kcalGoal).coerceIn(0f, 1f) else 0f
-            LinearProgressIndicator(progress = { calorieProgress }, modifier = Modifier.fillMaxWidth().height(9.dp), color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surface.copy(alpha = .55f))
+            LinearProgressIndicator(progress = { calorieProgress }, modifier = Modifier.fillMaxWidth().height(6.dp), color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surface.copy(alpha = .55f))
             Text("${(kcalGoal - totals.kcal.toInt()).coerceAtLeast(0)} kcal übrig", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
             HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .18f))
             NutrientRow("Eiweiß", totals.protein, proteinGoal.toFloat(), "g")
@@ -118,15 +118,15 @@ private fun DailyBalanceCard(
 
 @Composable
 private fun NutrientRow(label: String, value: Float, goal: Float, unit: String, isLimit: Boolean = false) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label)
-            Text("${value.toInt()} / ${goal.toInt()} $unit")
+            Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1, softWrap = false)
+            Text("${value.toInt()} / ${goal.toInt()} $unit", style = MaterialTheme.typography.bodySmall, maxLines = 1, softWrap = false)
         }
         val progress = if (goal > 0) (value / goal).coerceIn(0f, 1f) else 0f
         LinearProgressIndicator(
             progress = { progress },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(4.dp),
             color = if (isLimit && value > goal) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
         )
     }
@@ -189,4 +189,3 @@ private fun qualityLabel(source: FoodSource): String = when (source) {
     FoodSource.MANUAL -> "manuell eingegeben"
     FoodSource.CUSTOM -> "eigener Eintrag"
 }
-

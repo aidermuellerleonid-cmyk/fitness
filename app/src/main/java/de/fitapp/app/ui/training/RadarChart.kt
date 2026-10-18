@@ -1,4 +1,4 @@
-package de.fitapp.app.ui.progress
+package de.fitapp.app.ui.training
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
@@ -16,10 +16,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Zeichnet ein Radardiagramm auf Basis der 0..10-Bewertung je Muskelgruppe (5.0 = Durchschnitt).
- * Da die Bewertung direkt aus dem besten Satz berechnet wird (siehe MuscleProgressCalculator),
- * schlägt bereits ein einzelner starker Trainingssatz sofort im Diagramm aus. Muskelgruppen
- * ohne jegliche Daten werden am Rand gestrichelt markiert statt fälschlich als 0 dargestellt.
+ * Zeichnet die 12-Wiederholungs-Bewertung je Muskelgruppe (5 = passender Durchschnitt).
  */
 @Composable
 fun MuscleRadarChart(results: List<MuscleProgressResult>, labels: (de.fitapp.app.data.entity.MuscleGroup) -> String) {

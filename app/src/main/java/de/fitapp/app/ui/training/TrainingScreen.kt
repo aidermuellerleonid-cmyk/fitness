@@ -17,7 +17,6 @@ import androidx.compose.ui.window.Dialog
 import de.fitapp.app.data.entity.ExerciseLogEntity
 import de.fitapp.app.data.entity.MuscleGroup
 import de.fitapp.app.ui.AppViewModel
-import de.fitapp.app.ui.progress.MuscleRadarChart
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.round
@@ -51,7 +50,7 @@ fun TrainingScreen(viewModel: AppViewModel) {
     val formatter = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy") }
 
     Scaffold(
-        topBar = { LargeTopAppBar(title = { Text("Training", fontWeight = FontWeight.Bold) }) },
+        topBar = { TopAppBar(title = { Text("Training", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Add, contentDescription = "Übung hinzufügen") }
         }
@@ -64,12 +63,12 @@ fun TrainingScreen(viewModel: AppViewModel) {
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
                         Text("Trainingsbewertung", style = MaterialTheme.typography.titleMedium)
-                        Text("Deine Werte werden mit deinen Start-Maximalgewichten verglichen, sofern du sie eingetragen hast.", style = MaterialTheme.typography.bodySmall)
+                        Text("Ein Durchschnitt ergibt 5/10; das Doppelte davon ergibt 8/10. Die Übungswerte und Vergleichswerte werden einheitlich auf 12 Wiederholungen bezogen.", style = MaterialTheme.typography.bodySmall)
                         if (muscleProgress.isNotEmpty()) MuscleRadarChart(muscleProgress) { it.label() }
                         muscleProgress.filter { it.hasEnoughData }.forEach { result ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(result.group.label())
-                                Text("${round(result.rating * 10f) / 10f} / 10 · ${result.estimatedOneRepMaxKg.toInt()} kg / Start ${result.averageOneRepMaxKg.toInt()} kg")
+                                Text("${round(result.rating * 10f) / 10f} / 10 · ${result.averageTwelveRepWeightKg.toInt()} kg / Ø ${result.averageTwelveRepBenchmarkKg.toInt()} kg")
                             }
                         }
                     }
@@ -100,7 +99,7 @@ private fun ExerciseRow(log: ExerciseLogEntity, formatter: DateTimeFormatter) {
         Column(Modifier.padding(12.dp)) {
             Text("${log.exerciseName} · ${log.muscleGroup.label()}", style = MaterialTheme.typography.titleSmall)
             Text(
-                "${log.weightKg} kg × ${log.reps} Wdh. × ${log.sets} Sätze · " +
+                "${log.weightKg} kg · Bewertungsbasis 12 Wdh. × ${log.sets} Sätze · " +
                     LocalDate.ofEpochDay(log.dateEpochDay).format(formatter),
                 style = MaterialTheme.typography.bodySmall
             )
@@ -116,7 +115,6 @@ private fun AddExerciseDialog(
     var name by remember { mutableStateOf("") }
     var group by remember { mutableStateOf(MuscleGroup.BRUST) }
     var weight by remember { mutableStateOf("") }
-    var reps by remember { mutableStateOf("") }
     var sets by remember { mutableStateOf("3") }
     var expanded by remember { mutableStateOf(false) }
 
@@ -152,20 +150,19 @@ private fun AddExerciseDialog(
 
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(weight, { weight = it }, label = { Text("Gewicht (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(reps, { reps = it }, label = { Text("Wiederholungen") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(sets, { sets = it }, label = { Text("Sätze") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                Text("Für die Bewertung wird jedes Gewicht einheitlich auf 12 Wiederholungen bezogen.", style = MaterialTheme.typography.bodySmall)
 
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onDismiss) { Text("Abbrechen") }
                     Button(
                         onClick = {
-                            onSave(name.trim(), group, weight.toFloatOrNull() ?: 0f, reps.toIntOrNull() ?: 0, sets.toIntOrNull() ?: 1)
+                            onSave(name.trim(), group, weight.toFloatOrNull() ?: 0f, 12, sets.toIntOrNull() ?: 1)
                         },
-                        enabled = name.isNotBlank() && weight.toFloatOrNull() != null && reps.toIntOrNull() != null
+                        enabled = name.isNotBlank() && weight.toFloatOrNull() != null
                     ) { Text("Speichern") }
                 }
             }
         }
     }
 }
-

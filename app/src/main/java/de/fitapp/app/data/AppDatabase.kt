@@ -41,9 +41,10 @@ class Converters {
         DiaryEntryEntity::class,
         ExerciseLogEntity::class,
         SleepEntryEntity::class,
-        WeightEntryEntity::class
+        WeightEntryEntity::class,
+        ExerciseBaselineEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -54,6 +55,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun sleepDao(): SleepDao
     abstract fun weightDao(): WeightDao
+    abstract fun exerciseBaselineDao(): ExerciseBaselineDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -61,6 +63,11 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE user_profile ADD COLUMN benchPressMaxKg REAL")
                 db.execSQL("ALTER TABLE user_profile ADD COLUMN squatMaxKg REAL")
                 db.execSQL("ALTER TABLE user_profile ADD COLUMN legPressMaxKg REAL")
+            }
+        }
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS exercise_baseline (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, exerciseName TEXT NOT NULL, muscleGroup TEXT NOT NULL, maxWeightKg REAL NOT NULL)")
             }
         }
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -71,8 +78,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fitapp.db"
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
     }
 }
-

@@ -17,6 +17,31 @@ private val stepTitles = listOf(
     "Willkommen", "Ziel", "Körperdaten", "Aktivität", "Ernährungsziele", "Trainingsstand", "Startwerte"
 )
 
+private data class BaselineDraft(val exerciseName: String = "", val weightKg: String = "")
+
+private val baselineGroups = listOf(
+    MuscleGroup.BRUST, MuscleGroup.RUECKEN, MuscleGroup.BEINE,
+    MuscleGroup.SCHULTERN, MuscleGroup.ARME, MuscleGroup.BAUCH
+)
+
+private fun MuscleGroup.displayName() = when (this) {
+    MuscleGroup.BRUST -> "Brust"
+    MuscleGroup.RUECKEN -> "Rücken"
+    MuscleGroup.BEINE -> "Beine"
+    MuscleGroup.SCHULTERN -> "Schultern"
+    MuscleGroup.ARME -> "Arme"
+    MuscleGroup.BAUCH -> "Bauch"
+}
+
+private fun MuscleGroup.exerciseExamples() = when (this) {
+    MuscleGroup.BRUST -> listOf("Bankdrücken", "Brustpresse")
+    MuscleGroup.RUECKEN -> listOf("Rudern", "Latzug")
+    MuscleGroup.BEINE -> listOf("Kniebeuge", "Beinpresse")
+    MuscleGroup.SCHULTERN -> listOf("Schulterdrücken", "Seitheben")
+    MuscleGroup.ARME -> listOf("Bizepscurls", "Trizepsdrücken")
+    MuscleGroup.BAUCH -> listOf("Crunches", "Bauchmaschine")
+}
+
 @Composable
 fun OnboardingScreen(viewModel: AppViewModel) {
     var step by remember { mutableIntStateOf(0) }
@@ -37,9 +62,11 @@ fun OnboardingScreen(viewModel: AppViewModel) {
     var fiberGoal by remember { mutableStateOf(30) }
     var sugarGoal by remember { mutableStateOf(50) }
 
-    var benchMax by remember { mutableStateOf("") }
-    var squatMax by remember { mutableStateOf("") }
-    var legPressMax by remember { mutableStateOf("") }
+    val baselineDrafts = remember {
+        mutableStateMapOf<String, BaselineDraft>().apply {
+            baselineGroups.forEach { group -> repeat(2) { slot -> put("${group.name}-$slot", BaselineDraft()) } }
+        }
+    }
 
     fun applyMacrosForCalories(newCalorieGoal: Int) {
         calorieGoal = newCalorieGoal
@@ -66,7 +93,7 @@ fun OnboardingScreen(viewModel: AppViewModel) {
         sugarGoal = estimate.sugarLimitG
     }
 
-    fun finish(skippedRest: Boolean = false) {
+    fun finish() {
         val profile = UserProfile(
             goal = goal,
             age = age.toIntOrNull() ?: 30,
@@ -82,13 +109,20 @@ fun OnboardingScreen(viewModel: AppViewModel) {
             dailyFatGoalG = fatGoal,
             dailyFiberGoalG = fiberGoal,
             dailySugarLimitG = sugarGoal,
-            benchPressMaxKg = benchMax.toFloatOrNull()?.takeIf { it > 0f },
-            squatMaxKg = squatMax.toFloatOrNull()?.takeIf { it > 0f },
-            legPressMaxKg = legPressMax.toFloatOrNull()?.takeIf { it > 0f },
             onboardingCompleted = true
         )
         viewModel.saveProfile(profile)
-
+        val baselines = baselineGroups.flatMap { group ->
+            (0..1).mapNotNull { slot ->
+                val draft = baselineDrafts.getValue("${group.name}-$slot")
+                val name = draft.exerciseName.trim()
+                val weight = draft.weightKg.replace(',', '.').toFloatOrNull()
+                if (name.isNotBlank() && weight != null && weight > 0f) {
+                    ExerciseBaselineEntity(exerciseName = name, muscleGroup = group, maxWeightKg = weight)
+                } else null
+            }
+        }
+        viewModel.saveExerciseBaselines(baselines)
 
     }
 
@@ -101,7 +135,7 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TextButton(onClick = { finish(skippedRest = true) }) {
+                TextButton(onClick = { finish() }) {
                     Text(if (step == stepTitles.lastIndex) "Fertig" else "Überspringen")
                 }
                 Button(onClick = {
@@ -130,7 +164,7 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                         "In wenigen Schritten richten wir deine App ein. Wir fragen nach deinem " +
                             "Ziel, Körperdaten und deine persönlichen Kraftwerte. Damit können wir " +
                             "passende Kalorien- und Trainingsvorschläge berechnen. Du kannst jeden " +
-                            "Schritt überspringen und später im Profil ändern."
+                        "Schritt überspringen und später im Profil ändern."
                     )
                 }
                 1 -> {
@@ -185,11 +219,38 @@ fun OnboardingScreen(viewModel: AppViewModel) {
                     GoalOption("Erfahren", experience == TrainingExperience.ADVANCED) { experience = TrainingExperience.ADVANCED }
                 }
                 6 -> {
-                    Text("Deine persönlichen Bestleistungen", style = MaterialTheme.typography.titleMedium)
-                    Text("Gib dein aktuelles Maximalgewicht für eine Wiederholung ein. Die Angaben werden als persönliche Ausgangswerte für deine Trainingsbewertung genutzt. Du kannst Felder überspringen.")
-                    OutlinedTextField(benchMax, { benchMax = it }, label = { Text("Bankdrücken (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(squatMax, { squatMax = it }, label = { Text("Kniebeuge (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(legPressMax, { legPressMax = it }, label = { Text("Beinpresse (kg)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+                    Text("Deine Übungen und Maximalgewichte", style = MaterialTheme.typography.titleMedium)
+                    Text("Trag für jede große Muskelgruppe bis zu zwei Übungen und das bewegte Gewicht ein. Die Bewertung vergleicht alle Werte einheitlich auf Basis von 12 Wiederholungen – Wiederholungszahlen musst du nicht angeben. Unbekannte oder nicht passende Übungen kannst du einzeln überspringen.")
+                    baselineGroups.forEach { group ->
+                        ElevatedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(group.displayName(), style = MaterialTheme.typography.titleSmall)
+                                repeat(2) { slot ->
+                                    val key = "${group.name}-$slot"
+                                    val draft = baselineDrafts.getValue(key)
+                                    OutlinedTextField(
+                                        value = draft.exerciseName,
+                                        onValueChange = { baselineDrafts[key] = draft.copy(exerciseName = it) },
+                                        label = { Text("Übung ${slot + 1}") },
+                                        placeholder = { Text("z. B. ${group.exerciseExamples()[slot]}") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                    )
+                                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                        OutlinedTextField(
+                                            value = draft.weightKg,
+                                            onValueChange = { baselineDrafts[key] = draft.copy(weightKg = it) },
+                                            label = { Text("Gewicht (kg)") },
+                                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                            modifier = Modifier.weight(1f),
+                                            singleLine = true
+                                        )
+                                        TextButton(onClick = { baselineDrafts[key] = BaselineDraft() }) { Text("Überspringen") }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -217,4 +278,3 @@ private fun NumberField(label: String, value: Int, onChange: (Int) -> Unit) {
         modifier = Modifier.fillMaxWidth()
     )
 }
-

@@ -20,7 +20,7 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}bod
 const AREAS=[
 {k:'sleep',n:'Schlaf',q:'Hast du mehr als 8 Stunden geschlafen?',o:[['G','Ja'],['R','Nein']]},
 {k:'kcal',n:'Kalorienziel',q:'Hast du dein Kalorienziel erreicht?',o:[['G','Ja'],['R','Nein']]},
-{k:'goon',n:'Genoggt',q:'Hast du nicht genoggt?',o:[['G','Ja'],['R','Nein']]},
+{k:'goon',n:'Goonen',q:'Hast du heute nicht gegoont?',o:[['G','Ja'],['R','Nein']]},
 {k:'learn',n:'Lernen',q:'Hast du heute gelernt?',o:[['G','Ja'],['R','Nein']]},
 {k:'sport',n:'Sport',q:'Hast du heute Sport gemacht?',o:[['G','Ja'],['R','Nein']]}];
 const MN=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
@@ -72,7 +72,6 @@ $('next').onclick=()=>{M++;if(M>11){M=0;Y++}render()};
 render();
 setInterval(()=>{if(todayK()!==lastDay){lastDay=todayK();const d=new Date();Y=d.getFullYear();M=d.getMonth();sel=lastDay;render()}},30000);
 </script></body></html>
-
 
 
 

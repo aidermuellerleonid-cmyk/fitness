@@ -1,3 +1,9 @@
 <resources>
-    <style name="Theme.FitApp" parent="Theme.Material3.DayNight.NoActionBar" />
+    <style name="Theme.FitApp" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">#080D16</item>
+        <item name="android:navigationBarColor">#05080D</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:colorAccent">#60A5FA</item>
+    </style>
 </resources>

@@ -9,9 +9,6 @@ import de.fitapp.app.data.food.BarcodeLookupResult
 import de.fitapp.app.util.CalorieCalculator
 import de.fitapp.app.util.MuscleProgressCalculator
 import de.fitapp.app.util.MuscleProgressResult
-import de.fitapp.app.util.SleepStreakCalculator
-import de.fitapp.app.util.StreakCalculator
-import de.fitapp.app.util.StreakResult
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -53,6 +50,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         db.exerciseDao().observeAll()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val exerciseBaselines: StateFlow<List<ExerciseBaselineEntity>> =
+        db.exerciseBaselineDao().observeAll()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val sleepEntries: StateFlow<List<SleepEntryEntity>> =
         db.sleepDao().observeAll()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -64,46 +65,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Fließt zusammen mit dem Profil ein, da die Bewertung Alter, Geschlecht und Körpergewicht
     // der Person berücksichtigt (siehe StrengthBenchmark).
     val muscleProgress: StateFlow<List<MuscleProgressResult>> =
-        combine(exerciseLogs, profile) { logs, prof -> MuscleProgressCalculator.calculate(logs, prof) }
+        combine(exerciseLogs, exerciseBaselines, profile) { logs, baselines, prof ->
+            MuscleProgressCalculator.calculate(logs, baselines, prof)
+        }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    // Schlafdauer je Tag (Minuten), abgeleitet aus den protokollierten Schlafeinträgen.
-    private val sleepMinutesPerDay: StateFlow<Map<Long, Long>> =
-        sleepEntries.map { entries ->
-            entries.associate { entry ->
-                entry.dateEpochDay to (entry.wakeUpEpochMinute - entry.sleepStartEpochMinute).coerceAtLeast(0)
-            }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
-
-    val sleepStreak: StateFlow<StreakResult> = sleepMinutesPerDay
-        .map { SleepStreakCalculator.calculate(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, StreakResult(0, 0, emptySet()))
-
-    // Alle Tage mit Tagebucheintrag + Kalorien-Summe, für Streak-Berechnung und Verlauf.
-    private val _kcalHistory = MutableStateFlow<Map<Long, Float>>(emptyMap())
-    val kcalHistory: StateFlow<Map<Long, Float>> = _kcalHistory.asStateFlow()
-
-    val streak: StateFlow<StreakResult> = combine(kcalHistory, profile) { history, prof ->
-        StreakCalculator.calculate(history, prof?.dailyCalorieGoal ?: 2200)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, StreakResult(0, 0, emptySet()))
 
     init {
         viewModelScope.launch { foodRepository.ensureSeeded() }
-        refreshKcalHistory()
-    }
-
-    private fun refreshKcalHistory() {
-        viewModelScope.launch {
-            val days = db.diaryDao().getAllLoggedDays()
-            val map = mutableMapOf<Long, Float>()
-            // Für eine überschaubare App reicht ein einmaliger Batch-Read je Änderung;
-            // bei Bedarf könnte dies durch eine dedizierte SUM-Query pro Tag ersetzt werden.
-            for (day in days) {
-                val sum = db.diaryDao().observeKcalSumForDay(day).first() ?: 0f
-                map[day] = sum
-            }
-            _kcalHistory.value = map
-        }
     }
 
     // ---------- Profil / Onboarding ----------
@@ -111,6 +79,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun saveProfile(profile: UserProfile) {
         viewModelScope.launch {
             db.userProfileDao().upsert(profile)
+        }
+    }
+
+    fun saveExerciseBaselines(entries: List<ExerciseBaselineEntity>) {
+        viewModelScope.launch {
+            db.exerciseBaselineDao().deleteAll()
+            if (entries.isNotEmpty()) db.exerciseBaselineDao().insertAll(entries)
         }
     }
 
@@ -150,14 +125,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     valueQuality = food.source
                 )
             )
-            refreshKcalHistory()
         }
     }
 
     fun deleteDiaryEntry(entry: DiaryEntryEntity) {
         viewModelScope.launch {
             db.diaryDao().delete(entry)
-            refreshKcalHistory()
         }
     }
 
